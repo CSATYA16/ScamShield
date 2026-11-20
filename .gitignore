@@ -21,6 +21,10 @@ android/local.properties
 .env.production.local
 *.env
 !.env.example
+*.jks
+*.keystore
+keystore.properties
+android/keystore.properties
 
 # OS & Logs
 .DS_Store
