@@ -495,6 +495,35 @@ export function LiveProtectionView({
                   “{incomingPreview?.message ?? activeRecord?.message}”
                 </p>
 
+                {activeRecord?.diagnosticSource && (
+                  <div className="pt-2 border-t border-[#1F2633] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[#94A3B8]">
+                    <span>
+                      🔍 Extracted: <strong className="text-white">{activeRecord.diagnosticSource}</strong>
+                    </span>
+                    {activeRecord.isSummaryOnly ? (
+                      <span className="px-2 py-0.5 rounded bg-[#F59E0B]/20 text-[#FBBF24] font-bold text-[10px]">
+                        GROUP SUMMARY (CONTENT HIDDEN)
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded bg-[#22C55E]/15 text-[#4ADE80] font-bold text-[10px]">
+                        INDIVIDUAL MESSAGE BODY
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {activeRecord?.isSummaryOnly && (
+                  <div className="p-3 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-xs text-[#FDE68A] space-y-1">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-[#F59E0B]" />
+                      <span>WhatsApp Grouped Summary Notice</span>
+                    </p>
+                    <p className="text-[11px] leading-relaxed text-[#CBD5E1]">
+                      WhatsApp sent a bundled message counter instead of individual text. To test automatic scam detection, clear old WhatsApp notifications so new messages arrive as individual alerts, or use the <strong>Test Your Own Simulated Message</strong> form below.
+                    </p>
+                  </div>
+                )}
+
                 {isScanning && (
                   <div className="pt-3 space-y-2.5" role="status" aria-live="polite">
                     <div className="relative h-1.5 w-full rounded-full bg-[#1C2330] overflow-hidden">

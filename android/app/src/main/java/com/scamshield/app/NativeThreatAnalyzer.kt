@@ -58,6 +58,17 @@ object NativeThreatAnalyzer {
 
     private val URL_PATTERN = Pattern.compile("(?:https?://|www\\.)[^\\s<>()\"']+", Pattern.CASE_INSENSITIVE)
 
+    fun isSummaryNotification(text: String): Boolean {
+        val lower = text.lowercase().trim()
+        if (lower.matches(Regex(".*\\b\\d+\\s+messages?\\s+from\\s+\\d+\\s+chats?\\b.*"))) return true
+        if (lower.matches(Regex(".*\\b\\d+\\s+new\\s+messages?\\b.*"))) return true
+        if (lower.matches(Regex(".*\\b\\d+\\s+unread\\s+messages?\\b.*"))) return true
+        if (lower.matches(Regex("^\\d+\\s+messages?$"))) return true
+        if (lower == "new messages" || lower == "new message") return true
+        if (lower.contains("messages from") && lower.contains("chat")) return true
+        return false
+    }
+
     fun extractUrls(text: String): List<String> {
         val urls = mutableListOf<String>()
         val matcher = URL_PATTERN.matcher(text)
@@ -69,6 +80,27 @@ object NativeThreatAnalyzer {
     }
 
     fun analyze(message: String, sender: String = "Unknown", channel: String = "SMS"): NativeAnalysisResult {
+        // 0. Safeguard: Notification summary counts (never classify as SAFE)
+        if (isSummaryNotification(message)) {
+            return NativeAnalysisResult(
+                riskLevel = "SUSPICIOUS",
+                riskScore = 50,
+                scamCategory = "Notification Summary — Content Hidden by App",
+                explanation = "Android intercepted a grouped notification summary (\"$message\") instead of individual message text. WhatsApp bundled multiple chats together, hiding individual message content from the notification header.",
+                simpleExplanation = "⚠️ Group notification summary: \"$message\". WhatsApp hid the individual message content. Please open WhatsApp to read the chat directly.",
+                redFlags = listOf(
+                    "WhatsApp bundled multiple messages into a group count",
+                    "Individual message text not exposed in notification shade"
+                ),
+                recommendedActions = listOf(
+                    "Open WhatsApp directly to view the sender's unread message",
+                    "If suspicious, copy the message text and paste it into ScamShield Custom Analyzer"
+                ),
+                shouldBlock = false,
+                suspiciousUrls = emptyList()
+            )
+        }
+
         val combined = "$message $sender".lowercase()
         val text = message.lowercase()
         val urls = extractUrls(message)
@@ -128,8 +160,11 @@ object NativeThreatAnalyzer {
         }
 
         // 3. Bank KYC Phishing
-        val kycTerms = listOf("kyc", "pan card", "aadhaar", "bank account", "debit card", "credit card", "netbanking")
-        val kycAlert = listOf("suspended", "blocked", "expired", "deactivated", "update immediately", "verify identity", "within 24 hours")
+        val kycTerms = listOf("kyc", "pan card", "aadhaar", "bank account", "bank", "debit card", "credit card", "netbanking", "account")
+        val kycAlert = listOf(
+            "suspended", "blocked", "expired", "deactivated", "update immediately",
+            "complete kyc", "verify identity", "within 24 hours", "verify now", "account will be", "action required"
+        )
         var matchesKyc = false
         for (k in kycTerms) {
             if (combined.contains(k)) {

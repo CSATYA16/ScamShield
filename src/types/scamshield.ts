@@ -61,6 +61,9 @@ export interface ThreatRecord {
   protectionAction: ProtectionAction;
   reportStatus: ReportStatus;
   userMarkedSafe?: boolean;
+  diagnosticSource?: string;
+  rawExtractedText?: string;
+  isSummaryOnly?: boolean;
 }
 
 export interface QrAnalysisResult {

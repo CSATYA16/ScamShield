@@ -147,7 +147,7 @@ export function analyzeMessageRuleBased(
   }
 
   // 6. Bank KYC / account update lure
-  if (/\b(update your kyc|kyc immediately|kyc expired|pan card update|re-kyc|verify kyc)\b/i.test(body)) {
+  if (/\b(update your kyc|complete kyc|kyc immediately|kyc expired|pan card update|re-kyc|verify kyc|verify now)\b/i.test(body)) {
     signals.push({
       id: 'kyc-lure',
       weight: 32,

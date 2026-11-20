@@ -130,21 +130,90 @@ class ScamShieldNotificationService : NotificationListenerService() {
             if (isOngoing) return
 
             val extras = notification.extras ?: return
+            val isGroupSummaryFlag = (notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0
 
-            // Safely extract notification title and message text
-            val titleCharSeq = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)
-                ?: extras.getCharSequence(android.app.Notification.EXTRA_TITLE_BIG)
-            val textCharSeq = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)
-                ?: extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)
-                ?: extras.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)
+            var sender = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString()?.trim()
+                ?: extras.getCharSequence(android.app.Notification.EXTRA_TITLE_BIG)?.toString()?.trim()
+                ?: "Unknown Contact"
+            var messageText = ""
+            var sourceField = "UNKNOWN"
 
-            val sender = titleCharSeq?.toString()?.trim() ?: "Unknown Contact"
-            val messageText = textCharSeq?.toString()?.trim() ?: ""
+            // 1. Try MessagingStyle ("android.messages") - WhatsApp, Telegram, Google Messages
+            val messagesObj = extras.get("android.messages")
+            if (messagesObj is Array<*> && messagesObj.isNotEmpty()) {
+                for (i in messagesObj.indices.reversed()) {
+                    val item = messagesObj[i]
+                    if (item is android.os.Bundle) {
+                        val text = item.getCharSequence("text")?.toString()?.trim()
+                        val msgSender = item.getCharSequence("sender")?.toString()?.trim()
+                        if (!text.isNullOrBlank() && !NativeThreatAnalyzer.isSummaryNotification(text)) {
+                            messageText = text
+                            if (!msgSender.isNullOrBlank()) {
+                                sender = msgSender
+                            }
+                            sourceField = "EXTRA_MESSAGES[#$i]"
+                            Log.d(TAG, "Extracted individual message from $sourceField: $messageText (sender: $sender)")
+                            break
+                        }
+                    }
+                }
+            }
+
+            // 2. Try EXTRA_BIG_TEXT
+            if (messageText.isBlank()) {
+                val bigText = extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString()?.trim()
+                if (!bigText.isNullOrBlank() && !NativeThreatAnalyzer.isSummaryNotification(bigText)) {
+                    messageText = bigText
+                    sourceField = "EXTRA_BIG_TEXT"
+                    Log.d(TAG, "Extracted real message from $sourceField: $messageText")
+                }
+            }
+
+            // 3. Try EXTRA_TEXT_LINES (InboxStyle lines of messages)
+            if (messageText.isBlank()) {
+                val lines = extras.getCharSequenceArray(android.app.Notification.EXTRA_TEXT_LINES)
+                if (lines != null && lines.isNotEmpty()) {
+                    for (i in lines.indices.reversed()) {
+                        val line = lines[i]?.toString()?.trim()
+                        if (!line.isNullOrBlank() && !NativeThreatAnalyzer.isSummaryNotification(line)) {
+                            val colon = line.indexOf(':')
+                            if (colon in 1..40) {
+                                sender = line.substring(0, colon).trim()
+                                messageText = line.substring(colon + 1).trim()
+                            } else {
+                                messageText = line
+                            }
+                            sourceField = "EXTRA_TEXT_LINES[#$i]"
+                            Log.d(TAG, "Extracted real message from $sourceField: $messageText (sender: $sender)")
+                            break
+                        }
+                    }
+                }
+            }
+
+            // 4. Fall back to standard EXTRA_TEXT
+            if (messageText.isBlank()) {
+                val stdText = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()?.trim()
+                if (!stdText.isNullOrBlank()) {
+                    messageText = stdText
+                    sourceField = "EXTRA_TEXT"
+                }
+            }
+
+            // 5. Fall back to EXTRA_SUB_TEXT
+            if (messageText.isBlank()) {
+                val subText = extras.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)?.toString()?.trim()
+                if (!subText.isNullOrBlank()) {
+                    messageText = subText
+                    sourceField = "EXTRA_SUB_TEXT"
+                }
+            }
 
             if (messageText.isBlank()) return
 
+            val isSummaryOnly = isGroupSummaryFlag || NativeThreatAnalyzer.isSummaryNotification(messageText)
             val channel = mapPackageToChannel(packageName)
-            Log.d(TAG, "Intercepted notification from $channel ($sender): $messageText")
+            Log.i(TAG, "Intercepted from $channel ($sender) via $sourceField (isSummaryOnly=$isSummaryOnly): $messageText")
 
             // Real-time ScamShield Scam Analysis
             val analysis = NativeThreatAnalyzer.analyze(messageText, sender, channel)
@@ -157,10 +226,13 @@ class ScamShieldNotificationService : NotificationListenerService() {
                 put("sender", sender)
                 put("message", messageText)
                 put("packageName", packageName)
+                put("diagnosticSource", "$sourceField" + (if (isSummaryOnly) " (GROUP SUMMARY)" else ""))
+                put("rawExtractedText", messageText)
+                put("isSummaryOnly", isSummaryOnly)
                 put("analysis", analysis.toJsonObject())
                 put("protectionAction", when (analysis.riskLevel) {
                     "CRITICAL", "HIGH" -> "Simulated Block & Isolation"
-                    "SUSPICIOUS" -> "Warned User"
+                    "SUSPICIOUS" -> if (isSummaryOnly) "Monitoring Off — Manual Review" else "Warned User"
                     else -> "Allowed (Safe)"
                 })
                 put("reportStatus", "Not Reported")
@@ -176,8 +248,8 @@ class ScamShieldNotificationService : NotificationListenerService() {
             // Forward immediately to active Capacitor UI if open
             activeThreatListener?.invoke(threatRecord)
 
-            // If threat is SUSPICIOUS, HIGH, or CRITICAL -> Generate real native Android alert!
-            if (analysis.riskLevel == "CRITICAL" || analysis.riskLevel == "HIGH" || analysis.riskLevel == "SUSPICIOUS") {
+            // If threat is SUSPICIOUS, HIGH, or CRITICAL and NOT a mere summary -> Generate real native Android alert!
+            if (!isSummaryOnly && (analysis.riskLevel == "CRITICAL" || analysis.riskLevel == "HIGH" || analysis.riskLevel == "SUSPICIOUS")) {
                 postNativeAlert(
                     context = applicationContext,
                     threatId = threatId,

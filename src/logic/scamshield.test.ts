@@ -30,6 +30,17 @@ test('Bank KYC scam is classified HIGH or CRITICAL', () => {
   assert.ok(res.suspiciousUrls.length === 1);
 });
 
+test('Exact user hackathon test Bank KYC text is classified HIGH and blocked', () => {
+  const res = analyzeMessageRuleBased(
+    'Your bank account will be blocked today. Complete KYC immediately or your account will be suspended. Verify now.',
+    '+91-98765-43210',
+    'WhatsApp'
+  );
+  assert.ok(res.riskLevel === 'HIGH' || res.riskLevel === 'CRITICAL');
+  assert.equal(res.shouldBlock, true);
+  assert.match(res.scamCategory, /Bank KYC/i);
+});
+
 test('OTP scam is classified HIGH or CRITICAL', () => {
   const res = analyzeMessageRuleBased(
     'Your package is pending. Send the OTP you received to release your delivery.',
