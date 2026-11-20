@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  AlertCircle,
   AlertOctagon,
   AlertTriangle,
   Bell,
@@ -9,6 +10,7 @@ import {
   ChevronUp,
   ExternalLink,
   FileWarning,
+  Loader2,
   Lock,
   Mail,
   MessageSquare,
@@ -63,7 +65,8 @@ interface LiveProtectionViewProps {
   onMarkSafe: (recordId: string) => void;
   androidAccessStatus?: NotificationAccessStatus;
   onRequestAndroidAccess?: () => void;
-  onTriggerNativeTestAlert?: (scenario?: DemoScenario) => void;
+  onOpenAppNotificationSettings?: () => void;
+  onTriggerNativeTestAlert?: (scenario?: DemoScenario) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function LiveProtectionView({
@@ -87,12 +90,51 @@ export function LiveProtectionView({
   onMarkSafe,
   androidAccessStatus,
   onRequestAndroidAccess,
+  onOpenAppNotificationSettings,
   onTriggerNativeTestAlert,
 }: LiveProtectionViewProps) {
+  const [isSendingAlert, setIsSendingAlert] = useState(false);
+  const [alertFeedback, setAlertFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
   const [customDrawerOpen, setCustomDrawerOpen] = useState(false);
   const [customSender, setCustomSender] = useState('+91 98765 43210');
   const [customMessage, setCustomMessage] = useState('');
   const [customError, setCustomError] = useState('');
+
+  const handleTestAlertClick = async () => {
+    if (!onTriggerNativeTestAlert || isSendingAlert) return;
+    setIsSendingAlert(true);
+    setAlertFeedback(null);
+
+    try {
+      const res = await onTriggerNativeTestAlert(DEMO_SCENARIOS[0]);
+      if (res.success) {
+        setAlertFeedback({
+          type: 'success',
+          message:
+            '🚨 ScamShield test alert sent! Swipe down your phone notification shade to view.',
+        });
+        setTimeout(() => {
+          setAlertFeedback((prev) => (prev?.type === 'success' ? null : prev));
+        }, 6000);
+      } else {
+        setAlertFeedback({
+          type: 'error',
+          message: res.error || 'Failed to generate native notification.',
+        });
+      }
+    } catch (err) {
+      setAlertFeedback({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Error triggering test alert.',
+      });
+    } finally {
+      setIsSendingAlert(false);
+    }
+  };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -318,18 +360,70 @@ export function LiveProtectionView({
               </button>
             )}
 
+            {androidAccessStatus && !androidAccessStatus.canPostNotifications && onOpenAppNotificationSettings && (
+              <button
+                type="button"
+                onClick={onOpenAppNotificationSettings}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#F59E0B] hover:bg-[#D97706] text-black text-xs font-bold transition-colors"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Enable Device Notifications</span>
+              </button>
+            )}
+
             {onTriggerNativeTestAlert && (
               <button
                 type="button"
-                onClick={() => onTriggerNativeTestAlert(DEMO_SCENARIOS[0])}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1D2533] hover:bg-[#253042] border border-[#334155] text-white text-xs font-semibold transition-colors"
+                onClick={handleTestAlertClick}
+                disabled={isSendingAlert}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1D2533] hover:bg-[#253042] disabled:opacity-60 border border-[#334155] text-white text-xs font-semibold transition-colors"
               >
-                <Bell className="w-3.5 h-3.5 text-[#22C55E]" aria-hidden="true" />
-                <span>Test Phone Alert</span>
+                {isSendingAlert ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 text-[#60A5FA] animate-spin" aria-hidden="true" />
+                    <span>Sending test alert…</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-3.5 h-3.5 text-[#22C55E]" aria-hidden="true" />
+                    <span>Test Phone Alert</span>
+                  </>
+                )}
               </button>
             )}
           </div>
         </div>
+
+        {/* Dynamic Status / Feedback message */}
+        {alertFeedback && (
+          <div
+            className={`mt-3.5 p-3 rounded-lg border text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+              alertFeedback.type === 'success'
+                ? 'bg-[#22C55E]/15 border-[#22C55E]/40 text-[#86EFAC]'
+                : 'bg-[#EF4444]/15 border-[#EF4444]/40 text-[#FCA5A5]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {alertFeedback.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-[#22C55E] shrink-0" aria-hidden="true" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0" aria-hidden="true" />
+              )}
+              <span>{alertFeedback.message}</span>
+            </div>
+
+            {alertFeedback.type === 'error' && onOpenAppNotificationSettings && (
+              <button
+                type="button"
+                onClick={onOpenAppNotificationSettings}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#EF4444] hover:bg-[#DC2626] text-white text-xs font-bold rounded shrink-0 self-start sm:self-auto transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                <span>Open Settings</span>
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Main Split: Live Interception Viewport (Left 7 cols) + Scenario Triggers (Right 5 cols) */}

@@ -4,19 +4,36 @@ import type { ThreatRecord } from '../types/scamshield';
 export interface NotificationAccessStatus {
   isGranted: boolean;
   isConnected: boolean;
+  canPostNotifications: boolean;
   status: 'LISTENING' | 'NOT_LISTENING' | 'WEB_SIMULATION';
 }
 
+export interface NativeTestResult {
+  success: boolean;
+  notificationId?: number;
+  threat?: ThreatRecord;
+  error?: string;
+  needsPermission?: boolean;
+}
+
 interface ScamShieldBridgePluginInterface {
-  checkNotificationAccess(): Promise<{ isGranted: boolean; isConnected: boolean; status: string }>;
+  checkNotificationAccess(): Promise<{
+    isGranted: boolean;
+    isConnected: boolean;
+    canPostNotifications?: boolean;
+    status: string;
+  }>;
   requestNotificationAccess(): Promise<{ opened: boolean }>;
+  checkPostNotificationPermission(): Promise<{ granted: boolean }>;
+  requestPostNotificationPermission(): Promise<{ granted: boolean }>;
+  openAppNotificationSettings(): Promise<{ opened: boolean }>;
   getPendingThreats(): Promise<{ threats: ThreatRecord[] }>;
   clearPendingThreats(): Promise<{ cleared: boolean }>;
   simulateNativeNotification(params?: {
     sender?: string;
     channel?: string;
     message?: string;
-  }): Promise<{ success: boolean; threat: ThreatRecord }>;
+  }): Promise<{ success: boolean; notificationId?: number; threat?: ThreatRecord }>;
   addListener(
     eventName: 'threatDetected',
     listenerFunc: (threat: ThreatRecord) => void
@@ -34,6 +51,7 @@ export async function checkAndroidNotificationAccess(): Promise<NotificationAcce
     return {
       isGranted: true,
       isConnected: false,
+      canPostNotifications: true,
       status: 'WEB_SIMULATION',
     };
   }
@@ -41,8 +59,9 @@ export async function checkAndroidNotificationAccess(): Promise<NotificationAcce
   try {
     const res = await ScamShieldBridge.checkNotificationAccess();
     return {
-      isGranted: res.isGranted,
-      isConnected: res.isConnected,
+      isGranted: Boolean(res.isGranted),
+      isConnected: Boolean(res.isConnected),
+      canPostNotifications: res.canPostNotifications ?? true,
       status: res.isGranted ? 'LISTENING' : 'NOT_LISTENING',
     };
   } catch (err) {
@@ -50,6 +69,7 @@ export async function checkAndroidNotificationAccess(): Promise<NotificationAcce
     return {
       isGranted: false,
       isConnected: false,
+      canPostNotifications: false,
       status: 'NOT_LISTENING',
     };
   }
@@ -64,6 +84,28 @@ export async function requestAndroidNotificationAccess(): Promise<boolean> {
     return Boolean(res.opened);
   } catch (err) {
     console.error('[ScamShieldBridge] requestNotificationAccess error:', err);
+    return false;
+  }
+}
+
+export async function requestPostNotificationPermission(): Promise<boolean> {
+  if (!isNativeAndroid()) return true;
+  try {
+    const res = await ScamShieldBridge.requestPostNotificationPermission();
+    return Boolean(res.granted);
+  } catch (err) {
+    console.error('[ScamShieldBridge] requestPostNotificationPermission error:', err);
+    return false;
+  }
+}
+
+export async function openAppNotificationSettings(): Promise<boolean> {
+  if (!isNativeAndroid()) return true;
+  try {
+    const res = await ScamShieldBridge.openAppNotificationSettings();
+    return Boolean(res.opened);
+  } catch (err) {
+    console.error('[ScamShieldBridge] openAppNotificationSettings error:', err);
     return false;
   }
 }
@@ -83,14 +125,32 @@ export async function triggerNativeTestNotification(params: {
   sender: string;
   channel: string;
   message: string;
-}): Promise<ThreatRecord | null> {
-  if (!isNativeAndroid()) return null;
+}): Promise<NativeTestResult> {
+  if (!isNativeAndroid()) {
+    return {
+      success: true,
+      error: undefined,
+    };
+  }
+
   try {
+    // 1. Ensure Android 13+ POST_NOTIFICATIONS is requested if needed
+    await requestPostNotificationPermission();
+
+    // 2. Fire the native notification
     const res = await ScamShieldBridge.simulateNativeNotification(params);
-    return res.threat || null;
-  } catch (err) {
-    console.error('[ScamShieldBridge] simulateNativeNotification error:', err);
-    return null;
+    return {
+      success: Boolean(res.success),
+      notificationId: res.notificationId,
+      threat: res.threat,
+    };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error('[ScamShieldBridge] simulateNativeNotification error:', errorMessage);
+    return {
+      success: false,
+      error: errorMessage,
+    };
   }
 }
 

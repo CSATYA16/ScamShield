@@ -19,6 +19,7 @@ import { speakWarning, stopSpeaking } from './utils/speech';
 import {
   checkAndroidNotificationAccess,
   isNativeAndroid,
+  openAppNotificationSettings,
   requestAndroidNotificationAccess,
   subscribeToNativeThreats,
   triggerNativeTestNotification,
@@ -195,31 +196,47 @@ export default function App() {
     setAndroidAccessStatus(updated);
   };
 
-  const handleTriggerNativeTestAlert = async (scenario?: DemoScenario) => {
+  const handleOpenAppNotificationSettings = async () => {
+    await openAppNotificationSettings();
+    const updated = await checkAndroidNotificationAccess();
+    setAndroidAccessStatus(updated);
+  };
+
+  const handleTriggerNativeTestAlert = async (
+    scenario?: DemoScenario
+  ): Promise<{ success: boolean; error?: string }> => {
     const sc = scenario ?? DEMO_SCENARIOS[0];
     const channel = sc.defaultChannel;
     const sender = sc.senderByChannel[channel];
     const message = sc.message;
 
     if (isNativeAndroid()) {
-      const threat = await triggerNativeTestNotification({
+      const result = await triggerNativeTestNotification({
         sender,
         channel,
         message,
       });
-      if (threat) {
-        setActiveRecord(threat);
-        setIncomingPreview({
-          sender,
-          channel,
-          message,
-          arrivedAt: threat.timestamp,
-        });
-        setHistory((prev) => [threat, ...prev]);
-        setUnreadAlertsCount((c) => c + 1);
-        setActiveSection('live-protection');
-        return;
+
+      if (result.success) {
+        if (result.threat) {
+          setActiveRecord(result.threat);
+          setIncomingPreview({
+            sender,
+            channel,
+            message,
+            arrivedAt: result.threat.timestamp,
+          });
+          setHistory((prev) => [result.threat!, ...prev]);
+          setUnreadAlertsCount((c) => c + 1);
+          setActiveSection('live-protection');
+        }
+        return { success: true };
       }
+
+      return {
+        success: false,
+        error: result.error || 'Failed to trigger native notification.',
+      };
     }
 
     void runLiveInterception({
@@ -229,6 +246,7 @@ export default function App() {
       scenarioId: sc.id,
       forceEnableProtection: true,
     });
+    return { success: true };
   };
 
   const inHighRiskZone = Boolean(activeSimulatedZoneId);
@@ -625,6 +643,7 @@ export default function App() {
               onMarkSafe={handleMarkSafe}
               androidAccessStatus={androidAccessStatus}
               onRequestAndroidAccess={handleRequestAndroidAccess}
+              onOpenAppNotificationSettings={handleOpenAppNotificationSettings}
               onTriggerNativeTestAlert={handleTriggerNativeTestAlert}
             />
           )}

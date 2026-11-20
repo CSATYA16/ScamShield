@@ -36,6 +36,68 @@ class ScamShieldNotificationService : NotificationListenerService() {
                 else -> "SMS"
             }
         }
+
+        fun postNativeAlert(
+            context: Context,
+            threatId: String,
+            channel: String,
+            sender: String,
+            message: String,
+            analysis: NativeAnalysisResult
+        ): Int {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // Create high-importance channel on Android 8+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channelObj = NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "High-priority security alerts for detected digital scams and threats."
+                    enableVibration(true)
+                    setShowBadge(true)
+                }
+                notificationManager.createNotificationChannel(channelObj)
+            }
+
+            // Tap intent to open ScamShield app with threat details
+            val openIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("THREAT_ID", threatId)
+                putExtra("THREAT_SENDER", sender)
+                putExtra("THREAT_CHANNEL", channel)
+                putExtra("THREAT_MESSAGE", message)
+                putExtra("THREAT_RISK", analysis.riskLevel)
+                putExtra("THREAT_CATEGORY", analysis.scamCategory)
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                threatId.hashCode(),
+                openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+            )
+
+            val title = "🚨 ScamShield Alert: ${analysis.scamCategory}"
+            val bodyText = "[${analysis.riskLevel} RISK via $channel] ${analysis.simpleExplanation}"
+
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setContentTitle(title)
+                .setContentText(bodyText)
+                .setStyle(NotificationCompat.BigTextStyle().bigText("$bodyText\n\nIncoming from: $sender\n\"$message\""))
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setVibrate(longArrayOf(0, 400, 200, 400))
+
+            val alertNotificationId = (1000..9999).random()
+            notificationManager.notify(alertNotificationId, builder.build())
+            Log.i(TAG, "Fired ScamShield native alert #$alertNotificationId for $threatId")
+            return alertNotificationId
+        }
     }
 
     override fun onListenerConnected() {
@@ -116,7 +178,8 @@ class ScamShieldNotificationService : NotificationListenerService() {
 
             // If threat is SUSPICIOUS, HIGH, or CRITICAL -> Generate real native Android alert!
             if (analysis.riskLevel == "CRITICAL" || analysis.riskLevel == "HIGH" || analysis.riskLevel == "SUSPICIOUS") {
-                showNativeScamAlert(
+                postNativeAlert(
+                    context = applicationContext,
                     threatId = threatId,
                     channel = channel,
                     sender = sender,
@@ -128,65 +191,5 @@ class ScamShieldNotificationService : NotificationListenerService() {
         } catch (e: Exception) {
             Log.e(TAG, "Error handling incoming notification: ${e.message}", e)
         }
-    }
-
-    private fun showNativeScamAlert(
-        threatId: String,
-        channel: String,
-        sender: String,
-        message: String,
-        analysis: NativeAnalysisResult
-    ) {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        // Create high-importance channel on Android 8+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelObj = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "High-priority security alerts for detected digital scams and threats."
-                enableVibration(true)
-                setShowBadge(true)
-            }
-            notificationManager.createNotificationChannel(channelObj)
-        }
-
-        // Tap intent to open ScamShield app with threat details
-        val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("THREAT_ID", threatId)
-            putExtra("THREAT_SENDER", sender)
-            putExtra("THREAT_CHANNEL", channel)
-            putExtra("THREAT_MESSAGE", message)
-            putExtra("THREAT_RISK", analysis.riskLevel)
-            putExtra("THREAT_CATEGORY", analysis.scamCategory)
-        }
-
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            threatId.hashCode(),
-            openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
-        )
-
-        val title = "🚨 ScamShield Alert: ${analysis.scamCategory}"
-        val bodyText = "[${analysis.riskLevel} RISK via $channel] ${analysis.simpleExplanation}"
-
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_warning)
-            .setContentTitle(title)
-            .setContentText(bodyText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("$bodyText\n\nIncoming from: $sender\n\"$message\""))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .setVibrate(longArrayOf(0, 400, 200, 400))
-
-        val alertNotificationId = (1000..9999).random()
-        notificationManager.notify(alertNotificationId, builder.build())
-        Log.i(TAG, "Fired ScamShield native alert #$alertNotificationId for $threatId")
     }
 }
