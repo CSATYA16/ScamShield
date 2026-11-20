@@ -3,6 +3,9 @@
 > **AI & Rule-Based Scam Defense Platform with Native Android Real-Time Notification Monitoring**  
 > *Protecting everyday citizens from Digital Arrest extortion, Bank KYC phishing, OTP theft, fake job frauds, and UPI/QR payment scams.*
 
+[![Download Android APK](https://img.shields.io/badge/Download_APK-v1.0.0_Release-22c55e?style=for-the-badge&logo=android&logoColor=white)](https://github.com/CSATYA16/ScamShield/releases/download/v1.0.0/app-release.apk)
+[![GitHub Release](https://img.shields.io/github/v/release/CSATYA16/ScamShield?style=for-the-badge&color=blue)](https://github.com/CSATYA16/ScamShield/releases/tag/v1.0.0)
+
 ---
 
 ## 📌 Overview
@@ -94,17 +97,30 @@ ScamShield is engineered with a strict **Privacy-First** architecture:
 
 ## 📲 How to Install the Android APK
 
-### Option A: Install via ADB (Recommended)
+> ### 📥 **[Download ScamShield.apk (Official Release v1.0.0)](https://github.com/CSATYA16/ScamShield/releases/download/v1.0.0/app-release.apk)**
+> *Direct APK download from the official GitHub Release page.*
+
+### Option A — Install Directly on Android (Recommended)
+1. Download `app-release.apk` from the official **[GitHub Releases Page](https://github.com/CSATYA16/ScamShield/releases/tag/v1.0.0)** directly on your Android phone's browser.
+2. Open the downloaded APK on your Android phone.
+3. If prompted, allow **"Install unknown apps"** for the browser or file manager used to download/open the APK.
+4. Tap **Install**.
+5. Open **ScamShield**.
+6. Grant **Notification Access** through Android Settings when prompted.
+7. Return to ScamShield and verify protection status displays **`LISTENING (ACTIVE)`**.
+
+> [!NOTE]
+> **Transparent Security Note for Judges & Evaluators:**  
+> This is a hackathon prototype distributed outside the Google Play Store. Android or Google Play Protect may display a standard warning for sideloaded apps from independent developers (*"Unrecognized app/developer"*). If prompted, tap **"More details"** and select **"Install anyway"**. Only install APKs from the official ScamShield project release. Notification access is completely optional, user-controlled, and required strictly for real-time notification monitoring.
+
+### Option B — Install via USB/ADB (Optional for developers)
+If you prefer installing via your development computer over USB:
 1. Enable **Developer Options** and **USB Debugging** on your Android phone.
-2. Connect your phone via USB.
+2. Connect your phone to your computer via USB cable.
 3. Run from the project root:
    ```bash
-   adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+   adb install -r android/app/build/outputs/apk/release/app-release.apk
    ```
-
-### Option B: Direct Device Install
-1. Transfer `android/app/build/outputs/apk/debug/app-debug.apk` to your phone via Google Drive, WhatsApp, or Quick Share.
-2. Tap the APK file and select **Install** (allow "Install unknown apps" if prompted).
 
 ---
 
