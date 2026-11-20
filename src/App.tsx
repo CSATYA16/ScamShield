@@ -16,6 +16,14 @@ import { calculateDashboardMetrics } from './logic/metrics';
 import { buildReportFromQr, buildReportFromThreat } from './logic/reportBuilder';
 import { analyzeIncomingMessage } from './services/api';
 import { speakWarning, stopSpeaking } from './utils/speech';
+import {
+  checkAndroidNotificationAccess,
+  isNativeAndroid,
+  requestAndroidNotificationAccess,
+  subscribeToNativeThreats,
+  triggerNativeTestNotification,
+  type NotificationAccessStatus,
+} from './services/androidBridge';
 import type {
   AppSettings,
   ChannelType,
@@ -123,6 +131,105 @@ export default function App() {
   useEffect(() => {
     return () => stopSpeaking();
   }, []);
+
+  // Android Native Notification Bridge Status & Live Subscription
+  const [androidAccessStatus, setAndroidAccessStatus] = useState<NotificationAccessStatus>({
+    isGranted: true,
+    isConnected: false,
+    status: isNativeAndroid() ? 'NOT_LISTENING' : 'WEB_SIMULATION',
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    const syncStatus = async () => {
+      const s = await checkAndroidNotificationAccess();
+      if (mounted) setAndroidAccessStatus(s);
+    };
+    void syncStatus();
+
+    const handleWindowFocus = () => {
+      void syncStatus();
+    };
+    window.addEventListener('focus', handleWindowFocus);
+
+    const unsubscribe = subscribeToNativeThreats((nativeThreat) => {
+      setActiveRecord(nativeThreat);
+      setIncomingPreview({
+        sender: nativeThreat.sender,
+        channel: nativeThreat.channel as ActiveChannel,
+        message: nativeThreat.message,
+        arrivedAt: nativeThreat.timestamp,
+      });
+      setHistory((prev) => [nativeThreat, ...prev]);
+
+      if (
+        nativeThreat.analysis.riskLevel === 'CRITICAL' ||
+        nativeThreat.analysis.riskLevel === 'HIGH' ||
+        nativeThreat.analysis.riskLevel === 'SUSPICIOUS'
+      ) {
+        setUnreadAlertsCount((c) => c + 1);
+      }
+
+      if (
+        settings.voiceAlertsEnabled &&
+        settings.autoSpeakCritical &&
+        (nativeThreat.analysis.riskLevel === 'CRITICAL' || nativeThreat.analysis.riskLevel === 'HIGH')
+      ) {
+        const spoken = `${t.live.warningHeader}. ${nativeThreat.analysis.scamCategory}. ${nativeThreat.analysis.simpleExplanation}`;
+        handleSpeakText(spoken);
+      }
+
+      setActiveSection('live-protection');
+    });
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('focus', handleWindowFocus);
+      unsubscribe();
+    };
+  }, [settings.voiceAlertsEnabled, settings.autoSpeakCritical, t.live.warningHeader]);
+
+  const handleRequestAndroidAccess = async () => {
+    await requestAndroidNotificationAccess();
+    const updated = await checkAndroidNotificationAccess();
+    setAndroidAccessStatus(updated);
+  };
+
+  const handleTriggerNativeTestAlert = async (scenario?: DemoScenario) => {
+    const sc = scenario ?? DEMO_SCENARIOS[0];
+    const channel = sc.defaultChannel;
+    const sender = sc.senderByChannel[channel];
+    const message = sc.message;
+
+    if (isNativeAndroid()) {
+      const threat = await triggerNativeTestNotification({
+        sender,
+        channel,
+        message,
+      });
+      if (threat) {
+        setActiveRecord(threat);
+        setIncomingPreview({
+          sender,
+          channel,
+          message,
+          arrivedAt: threat.timestamp,
+        });
+        setHistory((prev) => [threat, ...prev]);
+        setUnreadAlertsCount((c) => c + 1);
+        setActiveSection('live-protection');
+        return;
+      }
+    }
+
+    void runLiveInterception({
+      sender,
+      channel,
+      message,
+      scenarioId: sc.id,
+      forceEnableProtection: true,
+    });
+  };
 
   const inHighRiskZone = Boolean(activeSimulatedZoneId);
 
@@ -516,6 +623,9 @@ export default function App() {
               }
               onPrepareReport={handlePrepareReportFromThreat}
               onMarkSafe={handleMarkSafe}
+              androidAccessStatus={androidAccessStatus}
+              onRequestAndroidAccess={handleRequestAndroidAccess}
+              onTriggerNativeTestAlert={handleTriggerNativeTestAlert}
             />
           )}
 

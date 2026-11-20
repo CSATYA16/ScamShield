@@ -2,14 +2,18 @@ import { useState } from 'react';
 import {
   AlertOctagon,
   AlertTriangle,
+  Bell,
+  BellRing,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
   FileWarning,
   Lock,
   Mail,
   MessageSquare,
   PhoneCall,
+  Radio,
   Send,
   Shield,
   ShieldAlert,
@@ -28,6 +32,7 @@ import type {
   DemoScenario,
   ThreatRecord,
 } from '../types/scamshield';
+import type { NotificationAccessStatus } from '../services/androidBridge';
 import { formatShortTime, riskColorClasses, RiskLabel } from './RiskText';
 
 type ActiveChannel = Exclude<ChannelType, 'QR'>;
@@ -56,6 +61,9 @@ interface LiveProtectionViewProps {
   onAnalyzeCustomMessage: (sender: string, message: string) => void;
   onPrepareReport: (record: ThreatRecord) => void;
   onMarkSafe: (recordId: string) => void;
+  androidAccessStatus?: NotificationAccessStatus;
+  onRequestAndroidAccess?: () => void;
+  onTriggerNativeTestAlert?: (scenario?: DemoScenario) => void;
 }
 
 export function LiveProtectionView({
@@ -77,6 +85,9 @@ export function LiveProtectionView({
   onAnalyzeCustomMessage,
   onPrepareReport,
   onMarkSafe,
+  androidAccessStatus,
+  onRequestAndroidAccess,
+  onTriggerNativeTestAlert,
 }: LiveProtectionViewProps) {
   const [customDrawerOpen, setCustomDrawerOpen] = useState(false);
   const [customSender, setCustomSender] = useState('+91 98765 43210');
@@ -238,6 +249,85 @@ export function LiveProtectionView({
               )}
               <span>Voice Alerts: {settings.voiceAlertsEnabled ? 'ON' : 'OFF'}</span>
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Android Native Notification Shield & Permission Banner */}
+      <section className="rounded-xl bg-[#11151C] border border-[#222936] p-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div
+              className={`p-2.5 rounded-lg shrink-0 ${
+                androidAccessStatus?.status === 'LISTENING'
+                  ? 'bg-[#22C55E]/15 text-[#22C55E]'
+                  : androidAccessStatus?.status === 'NOT_LISTENING'
+                  ? 'bg-[#EF4444]/15 text-[#EF4444]'
+                  : 'bg-[#3B82F6]/15 text-[#60A5FA]'
+              }`}
+            >
+              {androidAccessStatus?.status === 'LISTENING' ? (
+                <Radio className="w-5 h-5 animate-pulse" aria-hidden="true" />
+              ) : androidAccessStatus?.status === 'NOT_LISTENING' ? (
+                <BellRing className="w-5 h-5" aria-hidden="true" />
+              ) : (
+                <Smartphone className="w-5 h-5" aria-hidden="true" />
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-sm font-bold text-white tracking-wide">
+                  Android Live Notification Shield
+                </h2>
+                {androidAccessStatus?.status === 'LISTENING' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#22C55E]/20 text-[#4ADE80] border border-[#22C55E]/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-ping" />
+                    LISTENING (ACTIVE)
+                  </span>
+                ) : androidAccessStatus?.status === 'NOT_LISTENING' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EF4444]/20 text-[#FCA5A5] border border-[#EF4444]/40">
+                    ACTION REQUIRED
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#3B82F6]/20 text-[#93C5FD] border border-[#3B82F6]/40">
+                    HYBRID READY
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-[#94A3B8] max-w-2xl leading-relaxed">
+                {androidAccessStatus?.status === 'LISTENING'
+                  ? 'Real-time guardian active. Intercepting incoming notifications from WhatsApp, SMS, Telegram, and Gmail with explicit user permission.'
+                  : androidAccessStatus?.status === 'NOT_LISTENING'
+                  ? 'Notification access is not enabled. ScamShield cannot monitor incoming scam messages until you grant Notification Access in Android settings.'
+                  : 'Web Prototype & Native Android Hybrid. In the Android APK, ScamShield runs background notification monitoring without accessing chat databases.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            {androidAccessStatus?.status === 'NOT_LISTENING' && onRequestAndroidAccess && (
+              <button
+                type="button"
+                onClick={onRequestAndroidAccess}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#EF4444] hover:bg-[#DC2626] text-white text-xs font-bold transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Grant Notification Access</span>
+              </button>
+            )}
+
+            {onTriggerNativeTestAlert && (
+              <button
+                type="button"
+                onClick={() => onTriggerNativeTestAlert(DEMO_SCENARIOS[0])}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1D2533] hover:bg-[#253042] border border-[#334155] text-white text-xs font-semibold transition-colors"
+              >
+                <Bell className="w-3.5 h-3.5 text-[#22C55E]" aria-hidden="true" />
+                <span>Test Phone Alert</span>
+              </button>
+            )}
           </div>
         </div>
       </section>
