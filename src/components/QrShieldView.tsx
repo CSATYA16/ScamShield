@@ -14,6 +14,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { DEMO_QR_SAMPLES } from '../data/scenarios';
+import { isNativeAndroid, requestAndroidCameraPermission } from '../services/androidBridge';
 import { analyzeQrPayload } from '../services/api';
 import type { LanguageCode, QrAnalysisResult } from '../types/scamshield';
 import { qrVerdictClasses } from './RiskText';
@@ -86,7 +87,20 @@ export function QrShieldView({
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setCameraActive(false);
+  };
+
+  const handleVideoRef = (el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el && streamRef.current) {
+      el.srcObject = streamRef.current;
+      el.play().catch((err) => console.warn('Camera video play error:', err));
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(scanCameraFrame);
+    }
   };
 
   useEffect(() => {
@@ -113,19 +127,29 @@ export function QrShieldView({
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      });
+      if (isNativeAndroid()) {
+        await requestAndroidCameraPermission();
+      }
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+      }
       streamRef.current = stream;
       setCameraActive(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-          scanCameraFrame();
-        }
-      });
-    } catch {
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(scanCameraFrame);
+      }
+    } catch (err) {
+      console.error('Camera access error:', err);
       setCameraError('Camera permission was denied or no camera was detected. You can upload a QR image or inspect any demo QR sample below.');
       stopCamera();
     }
@@ -241,7 +265,8 @@ export function QrShieldView({
             {cameraActive && (
               <div className="relative rounded-lg overflow-hidden bg-black border border-[#22C55E]/40 aspect-video">
                 <video
-                  ref={videoRef}
+                  ref={handleVideoRef}
+                  autoPlay
                   muted
                   playsInline
                   className="w-full h-full object-cover"

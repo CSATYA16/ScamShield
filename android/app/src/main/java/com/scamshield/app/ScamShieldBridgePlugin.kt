@@ -24,6 +24,10 @@ import org.json.JSONObject
         Permission(
             strings = [Manifest.permission.POST_NOTIFICATIONS],
             alias = "notifications"
+        ),
+        Permission(
+            strings = [Manifest.permission.CAMERA],
+            alias = "camera"
         )
     ]
 )
@@ -136,6 +140,23 @@ class ScamShieldBridgePlugin : Plugin() {
             Log.e(TAG, "Could not open app notification settings: ${e.message}", e)
             call.reject("Failed to open settings: ${e.message}")
         }
+    }
+
+    @PluginMethod
+    fun checkCameraPermission(call: PluginCall) {
+        val ctx = context ?: return call.reject("No context available")
+        val isGranted = ctx.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        call.resolve(JSObject().put("granted", isGranted))
+    }
+
+    @PluginMethod
+    fun requestCameraPermission(call: PluginCall) {
+        val act = activity ?: return call.reject("No activity available")
+        val isGranted = act.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        if (!isGranted) {
+            act.requestPermissions(arrayOf(Manifest.permission.CAMERA), 101)
+        }
+        call.resolve(JSObject().put("granted", isGranted))
     }
 
     @PluginMethod

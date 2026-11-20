@@ -27,6 +27,8 @@ interface ScamShieldBridgePluginInterface {
   checkPostNotificationPermission(): Promise<{ granted: boolean }>;
   requestPostNotificationPermission(): Promise<{ granted: boolean }>;
   openAppNotificationSettings(): Promise<{ opened: boolean }>;
+  checkCameraPermission?(): Promise<{ granted: boolean }>;
+  requestCameraPermission?(): Promise<{ granted: boolean }>;
   getPendingThreats(): Promise<{ threats: ThreatRecord[] }>;
   clearPendingThreats(): Promise<{ cleared: boolean }>;
   simulateNativeNotification(params?: {
@@ -106,6 +108,17 @@ export async function openAppNotificationSettings(): Promise<boolean> {
     return Boolean(res.opened);
   } catch (err) {
     console.error('[ScamShieldBridge] openAppNotificationSettings error:', err);
+    return false;
+  }
+}
+
+export async function requestAndroidCameraPermission(): Promise<boolean> {
+  if (!isNativeAndroid()) return true;
+  try {
+    const res = await ScamShieldBridge.requestCameraPermission?.();
+    return Boolean(res?.granted);
+  } catch (err) {
+    console.warn('[ScamShieldBridge] requestCameraPermission error:', err);
     return false;
   }
 }
