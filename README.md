@@ -5,6 +5,7 @@
 
 [![Download Android APK](https://img.shields.io/badge/Download_APK-v1.0.0_Release-22c55e?style=for-the-badge&logo=android&logoColor=white)](https://github.com/CSATYA16/ScamShield/releases/download/v1.0.0/app-release.apk)
 [![GitHub Release](https://img.shields.io/github/v/release/CSATYA16/ScamShield?style=for-the-badge&color=blue)](https://github.com/CSATYA16/ScamShield/releases/tag/v1.0.0)
+[![Tested on Android](https://img.shields.io/badge/Tested_Device-Motorola_Edge_50-blueviolet?style=for-the-badge&logo=android)](https://github.com/CSATYA16/ScamShield)
 
 ---
 
@@ -12,9 +13,147 @@
 
 **ScamShield** is an AI-powered consumer cybersecurity system designed to protect citizens in India and globally from digital fraud. Built as a dual-engine platform, ScamShield combines Google Gemini AI reasoning with an instant, on-device regex/heuristic rule engine that detects scam patterns in under 5 milliseconds.
 
-During live hackathon demonstrations, ScamShield runs both as:
+During live hackathon demonstrations, ScamShield operates across two cohesive environments:
 1. **A Full Web Operations Dashboard**: For cybersecurity monitoring, threat forensics, risk zone simulation, and one-tap 1930 Cybercrime report preparation.
-2. **A Real Android Mobile Application**: Running natively on physical Android smartphones with a background `NotificationListenerService` that intercepts incoming scam notifications from WhatsApp, SMS, Telegram, and Gmail with explicit user authorization, generating instant Heads-Up security alerts before victims fall for extortion or phishing links.
+2. **A Real Android Mobile Application**: Running natively on physical Android smartphones with an active background `NotificationListenerService` that intercepts incoming scam notifications from WhatsApp, SMS, Telegram, and Gmail with explicit user authorization, generating instant Heads-Up security alerts before victims fall for extortion or phishing links.
+
+---
+
+# 🎬 HOW TO DEMONSTRATE SCAMSHIELD
+
+> [!TIP]
+> **Hackathon Judges & Evaluators Quick Demonstration Walkthrough**  
+> ScamShield can be evaluated either through a live physical smartphone test with incoming messaging apps or directly via the integrated Live Protection Simulator. Follow the 5 guided demonstrations below.
+
+### 📋 Demonstration Quick Reference Table
+
+| Demo | Target Scenario | Test Vector | Expected Output |
+| :--- | :--- | :--- | :--- |
+| **Demo 1** | **Bank KYC Phishing** | Live WhatsApp notification from another phone | **CRITICAL (88/100)** Heads-Up alert, Bank KYC classified |
+| **Demo 2** | **Digital Arrest Extortion** | In-app Simulator or live message | **CRITICAL (96/100)** Stop instructions, police extortion breakdown |
+| **Demo 3** | **Legitimate Safe Message** | Courier / doctor appointment update | **SAFE (0/100)** No alert, allowed through |
+| **Demo 4** | **QR Shield UPI Trap** | Malicious UPI QR scan / upload | **DANGEROUS** Reversal warning, PIN trap flagged |
+| **Demo 5** | **1930 Cybercrime Report** | One-tap complaint generator | Structured PDF/Portal draft with user review verification |
+
+---
+
+### Demo 1 — Real-Time WhatsApp Scam Detection (Live Physical Device)
+
+1. **Open ScamShield** on the Android phone.
+2. Verify in the **Live Protection** tab that Notification Access is enabled and status displays **`LISTENING (ACTIVE)`**.
+3. From a second smartphone or web chat, send this exact test message to the test phone via **WhatsApp**:
+   ```
+   Your bank account will be blocked today. Complete KYC immediately or your account will be suspended. Verify now.
+   ```
+4. Observe the incoming WhatsApp notification.
+5. Watch ScamShield automatically intercept the notification in background and fire a high-priority native **ScamShield Heads-Up Security Alert**:
+   > **🚨 ScamShield Alert: Bank KYC / Account Phishing**  
+   > *[CRITICAL RISK via WhatsApp] STOP! Urgent KYC threat detected.*
+6. Open **ScamShield** to view the live threat breakdown:
+   - **Extracted Message Content**: Verified string captured from notification extras.
+   - **Risk Score**: **`88/100 (CRITICAL RISK)`**.
+   - **Classification**: `Bank KYC / Account Phishing`.
+   - **Critical Warning**: Plain-language explanation of urgency tactics and phishing threats.
+   - **Protective Instructions**: 1-2-3 actionable advice (*"Never click unverified links"*, *"Call your bank branch directly"*).
+7. **Technical Explanation**: ScamShield uses Android's official permission-based `NotificationListenerService` (`ScamShieldNotificationService.kt`) with deep `Notification.MessagingStyle` extraction to parse notification bodies securely without reading private device storage.
+
+---
+
+### Demo 2 — Digital Arrest Scam (Simulator / Live Message)
+
+Use the app's built-in **Live Protection Simulator** (or send via SMS/WhatsApp) to test India's fastest-growing cyber threat:
+
+```
+You are under digital arrest. A police officer will arrest you unless you transfer ₹50,000 immediately. Do not tell anyone.
+```
+
+- **Output**: Generates an immediate **CRITICAL RISK (96/100)** alert.
+- **Red Flags Highlighted**: Fraudulent claim of "Digital Arrest" (no Indian law enforcement agency conducts arrests over video calls), intimidation extortion, secrecy demand (*"Do not tell anyone"*), and illicit fund transfer demand.
+- **Safety Instructions**: Clear multi-lingual guidance to immediately hang up and inform local police.
+
+---
+
+### Demo 3 — Safe Message (Zero False-Positive Verification)
+
+Test a legitimate service delivery or appointment message to verify that ScamShield avoids unnecessarily flagging ordinary everyday communication:
+
+```
+Your order #94821 from FreshGroceries has been dispatched and will arrive by 4:00 PM today.
+```
+
+- **Output**: Classified as **`SAFE (Risk Score: 0/100)`**.
+- **Result**: No alarm sound or heads-up vibration triggered. Marked as "Allowed (Safe)", confirming high precision without alarm fatigue.
+
+---
+
+### Demo 4 — QR Shield (Malicious UPI & Phishing QR Inspection)
+
+1. Switch to the **QR Shield** tab in ScamShield.
+2. Scan or load a fraudulent UPI payment QR code requesting money under the pretext of a "Refund" or "Lottery Prize":
+   ```
+   upi://pay?pa=fraudulentmerchant@okaxis&pn=RefundDesk&am=5000&cu=INR
+   ```
+3. **Analysis Result**:
+   - Flagged as **`DANGEROUS`**.
+   - Alerts the user: *"STOP! Scanning this QR code or entering your UPI PIN will DEBIT ₹5,000 from your account, NOT credit it. You never need to enter a UPI PIN to receive money."*
+
+---
+
+### Demo 5 — Reporting & Protection (1930 Portal Complaint Draft)
+
+1. From any detected threat record, tap **"Prepare 1930 Report"**.
+2. **Examine Complaint Draft**:
+   - ScamShield formats a structured complaint according to the specifications of the National Cyber Crime Reporting Portal.
+   - Evidence summary, sender identity, suspect URL, timestamp, and incident category are compiled into an organized dossier.
+   - Features one-click hotlink to **[cybercrime.gov.in](https://cybercrime.gov.in)** and speed-dialing for **National Cyber Financial Fraud Helpline 1930**.
+3. **User Action Disclosure**:
+   > [!IMPORTANT]
+   > Reports are prepared as a verified draft for the user and require human review. ScamShield **does not falsely claim automatic submission**—citizens retain full review and legal control before transmitting complaints to law enforcement authorities.
+
+---
+
+### ⚠️ IMPORTANT DEMO NOTE: WhatsApp Group Bundling & Notifications
+
+WhatsApp and other messaging platforms may bundle multiple incoming messages into aggregated summary notifications (e.g., *"100 messages from 4 chats"*). 
+
+- When deep message extras (`android.messages`) are available, ScamShield extracts and analyzes the individual text.
+- If individual content is completely obscured by OEM OS privacy locks, ScamShield transparently flags the event as **`MANUAL REVIEW NEEDED`** rather than producing a false "SAFE" result.
+- **For a guaranteed, deterministic live demonstration during hackathon judging, use the custom message simulator in the Live Protection tab or send a fresh single chat message.**
+
+---
+
+## 📱 Install ScamShield on Android
+
+### Direct APK Installation — Recommended for Judges
+
+> 📥 **[Download ScamShield.apk (Official Release v1.0.0)](https://github.com/CSATYA16/ScamShield/releases/download/v1.0.0/app-release.apk)**  
+> *(Signed, standalone Android package from the official [GitHub Releases Page](https://github.com/CSATYA16/ScamShield/releases/tag/v1.0.0))*
+
+1. Download the latest `ScamShield.apk` from the GitHub Releases section (link above) directly on your Android phone.
+2. Open the downloaded APK on your Android phone.
+3. If Android asks, allow installation from that source.
+4. Tap **Install**.
+5. Open **ScamShield**.
+6. Grant **Notification Access** through Android Settings if you want real-time notification monitoring.
+7. Return to ScamShield and verify the protection status displays **`LISTENING (ACTIVE)`**.
+
+> [!NOTE]
+> **Transparent Security Note for Judges & Evaluators:**  
+> ScamShield is a hackathon prototype distributed outside the Google Play Store. Android or Google Play Protect may display security warnings. Review the source and permissions before installation. Notification Access is user-controlled and required for notification monitoring. If prompted during installation, tap **"More details"** ➔ **"Install anyway"**.
+
+---
+
+### Optional Developer Installation — USB/ADB
+
+Judges do **not** need USB, ADB, Developer Options, or a laptop to install the app. This method is **OPTIONAL FOR DEVELOPERS**:
+
+1. Enable **Developer Options** and **USB Debugging** on your Android phone.
+2. Connect your phone to your computer via USB cable.
+3. Verify connection via `adb devices`.
+4. Install the release APK directly from the repository root:
+   ```bash
+   adb install -r android/app/build/outputs/apk/release/app-release.apk
+   ```
 
 ---
 
@@ -95,35 +234,6 @@ ScamShield is engineered with a strict **Privacy-First** architecture:
 
 ---
 
-## 📲 How to Install the Android APK
-
-> ### 📥 **[Download ScamShield.apk (Official Release v1.0.0)](https://github.com/CSATYA16/ScamShield/releases/download/v1.0.0/app-release.apk)**
-> *Direct APK download from the official GitHub Release page.*
-
-### Option A — Install Directly on Android (Recommended)
-1. Download `app-release.apk` from the official **[GitHub Releases Page](https://github.com/CSATYA16/ScamShield/releases/tag/v1.0.0)** directly on your Android phone's browser.
-2. Open the downloaded APK on your Android phone.
-3. If prompted, allow **"Install unknown apps"** for the browser or file manager used to download/open the APK.
-4. Tap **Install**.
-5. Open **ScamShield**.
-6. Grant **Notification Access** through Android Settings when prompted.
-7. Return to ScamShield and verify protection status displays **`LISTENING (ACTIVE)`**.
-
-> [!NOTE]
-> **Transparent Security Note for Judges & Evaluators:**  
-> This is a hackathon prototype distributed outside the Google Play Store. Android or Google Play Protect may display a standard warning for sideloaded apps from independent developers (*"Unrecognized app/developer"*). If prompted, tap **"More details"** and select **"Install anyway"**. Only install APKs from the official ScamShield project release. Notification access is completely optional, user-controlled, and required strictly for real-time notification monitoring.
-
-### Option B — Install via USB/ADB (Optional for developers)
-If you prefer installing via your development computer over USB:
-1. Enable **Developer Options** and **USB Debugging** on your Android phone.
-2. Connect your phone to your computer via USB cable.
-3. Run from the project root:
-   ```bash
-   adb install -r android/app/build/outputs/apk/release/app-release.apk
-   ```
-
----
-
 ## 🛠️ How to Build from Source
 
 ### Prerequisites
@@ -152,10 +262,10 @@ npm run build
 ```bash
 npx cap sync android
 cd android
-./gradlew assembleDebug
+./gradlew assembleRelease
 ```
-The compiled APK will be located at:
-`android/app/build/outputs/apk/debug/app-debug.apk`
+The compiled release APK will be located at:
+`android/app/build/outputs/apk/release/app-release.apk`
 
 ### Step 5: Run Automated Logic Tests
 ```bash
@@ -165,30 +275,9 @@ npx tsx src/logic/scamshield.test.ts
 
 ---
 
-## 🎬 Live Hackathon Demo Sequence
+## ⚠️ Known Limitations
 
-1. **Launch the Web Operations Center:**
-   - Run `npm run dev` on your presentation laptop to display the ScamShield Cybercrime Operations Dashboard on the big screen.
-2. **Open the Android App:**
-   - Launch **ScamShield** on the physical Android phone.
-   - In the **Live Protection** tab, verify the status displays **`LISTENING (ACTIVE)`**.
-3. **Test Real Scams Live:**
-   - Have a teammate send an actual WhatsApp or SMS message to the phone:
-     > *"Delhi Police Cyber Cell: You are under digital arrest for money laundering. Contact immediately or face arrest."*
-   - Or Bank KYC scam:
-     > *"Your bank account will be blocked today. Complete KYC immediately or your account will be suspended. Verify now."*
-4. **Experience the Instant Phone Alert:**
-   - The phone vibrates and fires a high-priority Heads-Up Notification:
-     > **🚨 ScamShield Alert: Digital Arrest & Extortion Scam**  
-     > *[CRITICAL RISK via WhatsApp] STOP! This message is trying to trick or threaten you.*
-5. **Inspect & Report:**
-   - Tap the alert to open ScamShield: it reveals red flags, triggers voice guidance in Hindi/Telugu/English, and generates a formatted 1930 Cybercrime complaint with one tap.
-
----
-
-## ⚠️ Known Platform Limitations
-
-- **WhatsApp Group Summaries**: When an Android device has numerous unread group chats, WhatsApp bundles notifications into a summary count (e.g. *"100 messages from 4 chats"*). ScamShield identifies this summary, extracts individual messages via `Notification.MessagingStyle`, and if content is completely obscured by Android OS privacy policies, responsibly flags it as **`MANUAL REVIEW`** rather than returning a false sense of security.
+- **WhatsApp Notification Bundling**: When an Android device has numerous unread group chats, WhatsApp bundles notifications into a summary count (e.g. *"100 messages from 4 chats"*). ScamShield extracts individual messages via `Notification.MessagingStyle`, and if content is completely obscured by Android OS privacy policies, responsibly flags it as **`MANUAL REVIEW`** rather than returning a false sense of security.
 - **Android Battery Optimization**: Certain aggressive OEM Android skins (Xiaomi MIUI, Oppo ColorOS) may sleep background listener services after extended inactivity unless battery optimization is set to "Unrestricted" for ScamShield.
 
 ---
