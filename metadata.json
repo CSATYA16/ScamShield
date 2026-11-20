@@ -1,0 +1,6 @@
+{
+  "name": "ScamShield",
+  "description": "AI-powered real-time digital safety platform protecting everyone from digital arrest, KYC, OTP, UPI, QR, and phishing scams.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
